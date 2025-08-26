@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "472013534602",
+    "project_id": "mapolato-27709",
+    "storage_bucket": "mapolato-27709.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:472013534602:android:5c63f93197441be6c84473",
+        "android_client_info": {
+          "package_name": "com.example.mapolato"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZLxLUypOHoV2bY9GmJzqemPiVk5PfbLs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
