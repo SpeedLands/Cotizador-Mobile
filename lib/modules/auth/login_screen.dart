@@ -43,20 +43,16 @@ class LoginScreen extends GetView<AuthController> {
     hintText: 'ejemplo@correo.com',
   );
 
-  Widget _buildPasswordField() => Obx(
-    () => FormHelper.buildTextField(
-      controller: controller.passwordController,
-      label: 'Contraseña',
-      readOnly: false,
-      hintText: '********',
-    ),
+  Widget _buildPasswordField() => FormHelper.buildTextField(
+    controller: controller.passwordController,
+    label: 'Contraseña',
+    readOnly: false,
+    hintText: '********',
   );
 
-  Widget _buildLoginButton() => Obx(
-    () => CustomButton(
-      color: AppColors.green,
-      onPress: controller.isLoading.value ? null : () => controller.login(),
-      text: 'Iniciar Sesión',
-    ),
+  Widget _buildLoginButton() => CustomButton(
+    color: AppColors.green,
+    onPress: controller.isLoading.value ? null : () => controller.login(),
+    text: 'Iniciar Sesión',
   );
 }

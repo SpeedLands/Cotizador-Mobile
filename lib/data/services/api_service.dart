@@ -34,16 +34,64 @@ class ApiService {
 
       final responseData = response.data;
 
+      // --- INICIO DE LA SECCIÓN MODIFICADA ---
       if (fromJson != null) {
         if (responseData is List) {
-          return responseData
-                  .map((item) => fromJson(item as Map<String, dynamic>))
-                  .toList()
-              as T;
+          // Determinar el tipo de la lista esperada y mapear
+          if (T == List<Servicio>) {
+            return responseData
+                    .map(
+                      (item) =>
+                          fromJson(item as Map<String, dynamic>) as Servicio,
+                    )
+                    .toList()
+                as T;
+          } else if (T == List<Cotizacion>) {
+            return responseData
+                    .map(
+                      (item) =>
+                          fromJson(item as Map<String, dynamic>) as Cotizacion,
+                    )
+                    .toList()
+                as T;
+          } else if (T == List<CalendarioEvento>) {
+            return responseData
+                    .map(
+                      (item) =>
+                          fromJson(item as Map<String, dynamic>)
+                              as CalendarioEvento,
+                    )
+                    .toList()
+                as T;
+          } else if (T == List<AppNotification>) {
+            return responseData
+                    .map(
+                      (item) =>
+                          fromJson(item as Map<String, dynamic>)
+                              as AppNotification,
+                    )
+                    .toList()
+                as T;
+          }
+          // Puedes añadir más `else if` para otros tipos de listas que manejes.
+          // Si no se encuentra un tipo específico, intenta un cast genérico
+          // que podría fallar si el fromJson no es lo suficientemente fuerte.
+          // Es mejor tener cada tipo explícito si la inferencia de Dart falla.
+          else {
+            logger.w(
+              'Tipo de lista no manejado explícitamente: $T. Intentando cast genérico.',
+            );
+            return responseData
+                    .map((item) => fromJson(item as Map<String, dynamic>))
+                    .toList()
+                as T;
+          }
         } else {
+          // Si no es una lista, mapea el objeto singular
           return fromJson(responseData as Map<String, dynamic>) as T;
         }
       }
+      // --- FIN DE LA SECCIÓN MODIFICADA ---
 
       if (T == Void) {
         return null as T;
