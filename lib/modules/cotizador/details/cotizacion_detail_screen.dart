@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../../data/models/cotizacion_model.dart';
+import '../../../data/services/notification_service.dart';
 import '../../../global/styles/app_colors.dart';
 import '../../../global/styles/app_text_styles.dart';
 import '../../../global/widgets/custom_scaffold.dart';
@@ -20,6 +22,42 @@ class CotizacionDetailScreen extends StatefulWidget {
 class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
   final DetailController controller = Get.find<DetailController>();
   final AuthController authController = Get.find<AuthController>();
+  final NotificationService notificationService =
+      Get.find<NotificationService>();
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'confirmado':
+        return AppColors.statusGreen;
+      case 'pendiente':
+        return AppColors.amber;
+      case 'cancelado':
+        return AppColors.statusRed;
+      case 'en revisión':
+        return AppColors.blue;
+      case 'contactado':
+        return AppColors.statusBlue;
+      default:
+        return AppColors.grey;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'confirmado':
+        return Icons.check_circle_outline;
+      case 'pendiente':
+        return Icons.access_time_outlined;
+      case 'cancelado':
+        return Icons.cancel_outlined;
+      case 'en revisión':
+        return Icons.search;
+      case 'contactado':
+        return Icons.chat_bubble_outline;
+      default:
+        return Icons.help_outline;
+    }
+  }
 
   @override
   void initState() {
@@ -163,9 +201,74 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
           'Dirección',
           cotizacion.direccionEvento ?? 'N/A',
         ),
+        // const SizedBox(height: 16),
+        // ElevatedButton.icon(
+        //   icon: const Icon(Icons.notification_add),
+        //   label: const Text('Crear Recordatorio'),
+        //   onPressed: () => _showReminderDialog(cotizacion),
+        // ),
       ],
     );
   }
+
+  // void _showReminderDialog(Cotizacion cotizacion) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) => AlertDialog(
+  //       title: const Text('Programar Recordatorio'),
+  //       content: Column(
+  //         mainAxisSize: MainAxisSize.min,
+  //         children: [
+  //           ListTile(
+  //             title: const Text('1 día antes'),
+  //             onTap: () async {
+  //               await AndroidFlutterLocalNotificationsPlugin()
+  //                   .requestExactAlarmsPermission();
+  //               _scheduleReminder(cotizacion, const Duration(seconds: 3));
+  //               Get.back();
+  //             },
+  //           ),
+  //           ListTile(
+  //             title: const Text('3 días antes'),
+  //             onTap: () async {
+  //               await AndroidFlutterLocalNotificationsPlugin()
+  //                   .requestExactAlarmsPermission();
+  //               _scheduleReminder(cotizacion, const Duration(days: 3));
+  //               Get.back();
+  //             },
+  //           ),
+  //           ListTile(
+  //             title: const Text('1 semana antes'),
+  //             onTap: () async {
+  //               await AndroidFlutterLocalNotificationsPlugin()
+  //                   .requestExactAlarmsPermission();
+  //               _scheduleReminder(cotizacion, const Duration(days: 7));
+  //               Get.back();
+  //             },
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  // void _scheduleReminder(Cotizacion cotizacion, Duration offset) {
+  //   final eventDate = DateTime.parse(cotizacion.fechaEvento);
+  //   final scheduledDate = eventDate.subtract(offset);
+
+  //   notificationService.scheduleQuoteReminder(
+  //     cotizacion.id,
+  //     'Recordatorio de tu Evento',
+  //     'Tu evento "${cotizacion.tipoEvento}" es en ${offset.inDays} día(s).',
+  //     scheduledDate,
+  //   );
+
+  //   Get.snackbar(
+  //     'Recordatorio Programado',
+  //     'Se te notificará ${offset.inDays} día(s) antes del evento.',
+  //     snackPosition: SnackPosition.BOTTOM,
+  //   );
+  // }
 
   Widget _buildLogisticaCard(Cotizacion cotizacion) => _DetailCard(
     title: 'Logística y Requisitos',
@@ -195,15 +298,15 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
 
   Widget _buildEstadoCard(Cotizacion cotizacion) => Card(
     elevation: 2,
-    color: AppColors.amber,
+    color: _getStatusColor(cotizacion.status),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     child: Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.watch_later_outlined,
+          Icon(
+            _getStatusIcon(cotizacion.status),
             color: AppColors.textLight,
             size: 30,
           ),
@@ -347,7 +450,7 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: style),
-          Text('\$$value', style: valueStyle),
+          Text('\$${value.toString()}', style: valueStyle),
         ],
       ),
     );
@@ -355,7 +458,6 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
 }
 
 class _DetailCard extends StatelessWidget {
-
   const _DetailCard({required this.title, required this.children});
   final String title;
   final List<Widget> children;

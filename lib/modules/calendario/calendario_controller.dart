@@ -1,14 +1,16 @@
+import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '../../data/models/calendario_evento_model.dart'; // Asegúrate que la ruta sea correcta
+import '../../data/models/calendario_evento_model.dart';
 import '../../data/services/api_service.dart';
+import '../../utils/logger.dart';
 
 class CalendarioController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
 
   // --- ESTADO DEL CALENDARIO ---
-  var isLoading = false.obs;
+  var isLoading = true.obs; // Inicia en true para el primer fetch
   var errorMessage = Rx<String?>(null);
 
   var events = <DateTime, List<CalendarioEvento>>{}.obs;
@@ -20,65 +22,73 @@ class CalendarioController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Establece el día seleccionado inicial y obtiene los eventos
+    selectedDay.value = _normalizeDate(focusedDay.value);
     fetchEventos();
-
-    selectedDay.value = focusedDay.value;
-    // Inicializamos la lista de eventos para el día de hoy
-    // Usamos un Future.delayed para asegurar que el primer frame se construya sin problemas
-    Future.delayed(Duration.zero, () {
-      selectedEvents.value = getEventsForDay(selectedDay.value!);
-    });
   }
 
+  /// Obtiene los eventos de la API y los procesa.
   Future<void> fetchEventos() async {
     try {
       isLoading.value = true;
       errorMessage.value = null;
-      events.clear();
 
       final eventosDesdeApi = await _apiService.getCalendarioEventos();
+      events.value = _groupEventsByDay(eventosDesdeApi);
 
-      // --- PROCESAMOS LA LISTA PARA AGRUPARLA POR DÍA ---
-      for (final evento in eventosDesdeApi) {
-        // CAMBIO: Parseamos la fecha String a un objeto DateTime
-        final parsedDate = DateTime.parse(evento.start);
-
-        // Normalizamos la fecha a UTC para evitar problemas de zona horaria
-        final date = DateTime.utc(
-          parsedDate.year,
-          parsedDate.month,
-          parsedDate.day,
-        );
-
-        if (events[date] == null) {
-          events[date] = [];
-        }
-        events[date]!.add(evento);
-      }
-      // Actualizamos la lista de eventos para el día que ya estaba seleccionado
-      if (selectedDay.value != null) {
-        selectedEvents.value = getEventsForDay(selectedDay.value!);
-      }
+      // Actualiza los eventos para el día seleccionado después de obtenerlos.
+      updateSelectedEvents(selectedDay.value!);
     } on Exception catch (e) {
-      errorMessage.value = 'No se pudieron cargar los eventos del calendario.';
-      Get.snackbar('Error', '${errorMessage.value!} $e');
+      _handleFetchError(e);
     } finally {
       isLoading.value = false;
     }
   }
 
+  /// Agrupa una lista de eventos en un mapa por día.
+  Map<DateTime, List<CalendarioEvento>> _groupEventsByDay(
+    List<CalendarioEvento> eventos,
+  ) {
+    final Map<DateTime, List<CalendarioEvento>> groupedEvents = {};
+    for (final evento in eventos) {
+      final date = _normalizeDate(DateTime.parse(evento.start));
+      (groupedEvents[date] ??= []).add(evento);
+    }
+    return groupedEvents;
+  }
+
+  /// Maneja los errores ocurridos durante la obtención de eventos.
+  void _handleFetchError(Object e) {
+    logger.e('Error al obtener eventos del calendario', error: e);
+    if (e is DioException) {
+      errorMessage.value = 'Error de red: No se pudieron cargar los eventos.';
+    } else {
+      errorMessage.value =
+          'Ocurrió un error inesperado al procesar los eventos.';
+    }
+    Get.snackbar('Error', errorMessage.value!);
+  }
+
+  /// Normaliza una fecha a UTC para consistencia.
+  DateTime _normalizeDate(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day);
+
   /// Devuelve la lista de eventos para un día específico.
-  List<CalendarioEvento> getEventsForDay(DateTime day) {
-    final normalizedDay = DateTime.utc(day.year, day.month, day.day);
-    return events[normalizedDay] ?? [];
+  List<CalendarioEvento> getEventsForDay(DateTime day) =>
+      events[_normalizeDate(day)] ?? [];
+
+  /// Actualiza la lista de eventos seleccionados para un día dado.
+  void updateSelectedEvents(DateTime day) {
+    selectedEvents.value = getEventsForDay(day);
   }
 
   /// Se llama cuando el usuario toca un día en el calendario.
   void onDaySelected(DateTime day, DateTime focused) {
-    if (!isSameDay(selectedDay.value, day)) {
-      selectedDay.value = day;
+    final normalizedDay = _normalizeDate(day);
+    if (!isSameDay(selectedDay.value, normalizedDay)) {
+      selectedDay.value = normalizedDay;
       focusedDay.value = focused;
-      selectedEvents.value = getEventsForDay(day);
+      updateSelectedEvents(normalizedDay);
     }
   }
 }

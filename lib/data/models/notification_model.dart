@@ -25,4 +25,20 @@ class AppNotification {
   final bool isRead;
   final String actionUrl;
   final String createdAt;
+
+  AppNotification copyWith({
+    int? id,
+    String? title,
+    String? body,
+    bool? isRead,
+    String? actionUrl,
+    String? createdAt,
+  }) => AppNotification(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    body: body ?? this.body,
+    isRead: isRead ?? this.isRead,
+    actionUrl: actionUrl ?? this.actionUrl,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }

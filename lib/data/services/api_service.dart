@@ -9,9 +9,15 @@ import '../models/dashboard_data_model.dart';
 import '../models/notification_model.dart';
 import '../models/servicio_model.dart';
 import '../providers/dio_client.dart';
+import 'auth_service.dart';
 
 class ApiService {
-  final Dio _dio = DioClient().dio;
+  final AuthService _authService;
+  late final Dio _dio;
+
+  ApiService(this._authService) {
+    _dio = DioClient(_authService).dio;
+  }
 
   Future<T> _requestWrapper<T>(
     String method,
@@ -136,6 +142,14 @@ class ApiService {
     data: {'name': name, 'email': email, 'password': password},
     operationName: 'Registro para $email',
   );
+
+  Future<Map<String, dynamic>> refreshToken(String refreshToken) =>
+      _requestWrapper(
+        'POST',
+        '/auth/refresh',
+        data: {'refresh_token': refreshToken},
+        operationName: 'Renovar token',
+      );
 
   // Servicios
   Future<List<Servicio>> getServicios() => _requestWrapper<List<Servicio>>(

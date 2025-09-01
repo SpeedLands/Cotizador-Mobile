@@ -1,111 +1,161 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../data/models/servicio_model.dart';
 import '../../data/services/api_service.dart';
+import '../../utils/logger.dart';
 
 class ServicioController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
 
-  var isLoading = false.obs;
+  // --- ESTADO ---
+  var isLoading = true.obs;
   var _allServicios = <Servicio>[];
   var servicios = <Servicio>[].obs;
+
+  // --- FILTROS ---
   final searchQueryController = TextEditingController();
-  var searchQuery = ''.obs;
+  var searchQuery =
+      ''.obs; // Reintroducido para un debouncing correcto y limpio
   var selectedTipoCobro = 'Todos'.obs;
 
   @override
   void onInit() {
     super.onInit();
+    // Este worker es la forma más limpia en GetX para reaccionar a cambios
+    // en un observable con un debounce.
+    debounce(
+      searchQuery,
+      (_) => filterServicios(),
+      time: const Duration(milliseconds: 350),
+    );
+
+    // El listener simplemente actualiza el observable.
     searchQueryController.addListener(() {
-      // Usamos debounce para no filtrar en cada letra que se escribe
-      debounce(searchQuery, (_) {
-        searchQuery.value = searchQueryController.text;
-        filterServicios();
-      }, time: const Duration(milliseconds: 300));
+      searchQuery.value = searchQueryController.text;
     });
+
     fetchServicios();
   }
 
-  void filterServicios() {
-    final query = searchQuery.value.toLowerCase();
-    var filteredList = List<Servicio>.from(_allServicios);
-
-    // 1. Filtrar por nombre (búsqueda de texto)
-    if (query.isNotEmpty) {
-      filteredList = filteredList
-          .where((s) => s.nombre.toLowerCase().contains(query))
-          .toList();
-    }
-
-    // 2. Filtrar por tipo de cobro
-    if (selectedTipoCobro.value != 'Todos') {
-      filteredList = filteredList
-          .where((s) => s.tipoCobro == selectedTipoCobro.value)
-          .toList();
-    }
-
-    servicios.value = filteredList;
+  @override
+  void onClose() {
+    searchQueryController.dispose();
+    super.onClose();
   }
 
-  void clearFilters() {
-    searchQueryController.clear();
-    selectedTipoCobro.value = 'Todos';
-    filterServicios();
-  }
-
-  void changeTipoCobroFilter(String? newType) {
-    if (newType != null) {
-      selectedTipoCobro.value = newType;
-      filterServicios();
-    }
-  }
-
-  Future<void> fetchServicios() async {
+  /// Envoltura genérica para llamadas a la API.
+  Future<void> _callApi(
+    Future<void> Function() apiCall, {
+    String? successMessage,
+  }) async {
     try {
       isLoading.value = true;
-      final result = await _apiService.getServicios();
-      _allServicios = result;
-      filterServicios();
-    } on Exception {
-      Get.snackbar('Error', 'No se pudieron cargar los servicios.');
+      await apiCall();
+      if (successMessage != null) {
+        Get.snackbar(
+          'Éxito',
+          successMessage,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } on DioException catch (e) {
+      String errorMessage = 'Error de red desconocido.';
+
+      // 2. Guarda el 'data' en una variable local para facilitar la lectura.
+      final responseData = e.response?.data;
+
+      // 3. ¡LA CLAVE! Comprueba si 'data' es realmente un Mapa.
+      if (responseData is Map<String, dynamic>) {
+        // 4. Si es un mapa, ahora sí puedes acceder a la clave de forma segura.
+        // También es buena práctica verificar si el mensaje existe y no es nulo.
+        errorMessage =
+            responseData['message'] as String? ??
+            'El servidor no proporcionó un mensaje de error.';
+      } else if (responseData != null) {
+        // 5. (Opcional pero recomendado) Si no es un mapa pero no es nulo,
+        // conviértelo a String para mostrar algo de información.
+        errorMessage = responseData.toString();
+      }
+      Get.snackbar(
+        'Error de API',
+        errorMessage,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      logger.e('Error de Dio en ServicioController', error: e);
+    } on Exception catch (e) {
+      Get.snackbar(
+        'Error',
+        'Ocurrió un error inesperado.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      logger.e('Error inesperado en ServicioController', error: e);
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> deleteServicio(int id) async {
-    try {
-      await _apiService.deleteServicio(id);
-      // Eliminamos el servicio de la lista local para una UI instantánea
-      _allServicios.removeWhere((s) => s.id == id);
-      filterServicios();
-      Get.snackbar('Éxito', 'Servicio eliminado correctamente.');
-    } on Exception {
-      Get.snackbar('Error', 'No se pudo eliminar el servicio.');
+  /// Filtra la lista de servicios basándose en el `searchQuery` y el tipo de cobro.
+  void filterServicios() {
+    final query = searchQuery.value.toLowerCase();
+    servicios.value = _allServicios.where((servicio) {
+      final nameMatch = servicio.nombre.toLowerCase().contains(query);
+      final typeMatch =
+          selectedTipoCobro.value == 'Todos' ||
+          servicio.tipoCobro == selectedTipoCobro.value;
+      return nameMatch && typeMatch;
+    }).toList();
+  }
+
+  /// Limpia todos los filtros y muestra la lista completa.
+  void clearFilters() {
+    searchQueryController.clear();
+    selectedTipoCobro.value = 'Todos';
+    // El listener de searchQuery se encargará de actualizar la UI
+  }
+
+  /// Cambia el filtro de tipo de cobro y aplica los filtros.
+  void changeTipoCobroFilter(String? newType) {
+    if (newType != null) {
+      selectedTipoCobro.value = newType;
+      filterServicios(); // El filtro de tipo de cobro es inmediato
     }
   }
 
-  /// Guarda un servicio (ya sea creando uno nuevo o actualizando uno existente).
-  Future<void> saveServicio(Map<String, dynamic> data, {int? id}) async {
-    try {
-      if (id == null) {
-        // Creando un nuevo servicio
-        await _apiService.createServicio(data);
-        Get.snackbar('Éxito', 'Servicio creado correctamente.');
-      } else {
-        // Actualizando un servicio existente
-        await _apiService.updateServicio(id, data);
-        Get.snackbar('Éxito', 'Servicio actualizado correctamente.');
-      }
+  /// Obtiene todos los servicios desde la API.
+  Future<void> fetchServicios() async {
+    await _callApi(() async {
+      final result = await _apiService.getServicios();
+      _allServicios = result;
+      filterServicios();
+    });
+  }
 
-      // Cerramos el formulario y refrescamos la lista
-      Get.back();
-      await fetchServicios();
-    } on Exception catch (e) {
-      Get.snackbar(
-        'Error',
-        'No se pudo guardar el servicio. Verifica los datos. ${e.toString()}',
-      );
-    }
+  /// Elimina un servicio por su ID.
+  Future<void> deleteServicio(int id) async {
+    await _callApi(() async {
+      await _apiService.deleteServicio(id);
+      _allServicios.removeWhere((s) => s.id == id);
+      filterServicios();
+    }, successMessage: 'Servicio eliminado correctamente.');
+  }
+
+  /// Guarda un servicio (crea o actualiza).
+  Future<void> saveServicio(Map<String, dynamic> data, {int? id}) async {
+    final isCreating = id == null;
+    await _callApi(
+      () async {
+        if (isCreating) {
+          await _apiService.createServicio(data);
+        } else {
+          await _apiService.updateServicio(id, data);
+        }
+        Get.back();
+        await fetchServicios();
+      },
+      successMessage:
+          'Servicio ${isCreating ? 'creado' : 'actualizado'} correctamente.',
+    );
   }
 }

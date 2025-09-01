@@ -18,69 +18,74 @@ class ServiciosListScreen extends GetView<ServicioController> {
 
   @override
   Widget build(BuildContext context) => ListScreenLayout<Servicio>(
-      title: 'Gestión de Servicios',
-      showDrawer: true,
-      showBackButton: true,
-      items: controller.servicios,
-      isLoading: controller.isLoading,
-      emptyMessage: 'No hay servicios creados.',
-      onRefresh: () => controller.fetchServicios(),
-      actions: [
-        IconButton(
-          onPressed: () => Get.toNamed(AppRoutes.SERVICIO_FORM),
-          icon: const Icon(Icons.add),
-        ),
-        IconButton(
-          onPressed: () => controller.fetchServicios(),
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
-      headerContent: _buildSearchBar(),
-      filterBuilder: Obx(
-        () => ActiveFiltersDisplay(
-          filters: [
-            if (controller.selectedTipoCobro.value != 'Todos')
-              ActiveFilter(
-                label:
-                    'Tipo: ${controller.selectedTipoCobro.value.replaceAll('_', ' ')}',
-                onRemove: () => controller.changeTipoCobroFilter('Todos'),
-              ),
-          ],
-        ),
+    padding: EdgeInsets.fromLTRB(
+      8,
+      8,
+      8,
+      8 + MediaQuery.of(context).viewPadding.bottom,
+    ),
+    title: 'Gestión de Servicios',
+    showDrawer: true,
+    showBackButton: true,
+    items: controller.servicios,
+    isLoading: controller.isLoading,
+    emptyMessage: 'No hay servicios creados.',
+    onRefresh: () => controller.fetchServicios(),
+    actions: [
+      IconButton(
+        onPressed: () => Get.toNamed(AppRoutes.SERVICIO_FORM),
+        icon: const Icon(Icons.add),
       ),
-      itemBuilder: (servicio) => _ServiceCard(servicio: servicio),
-    );
-
-  Widget _buildSearchBar() => Padding(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: CustomTextFormField(
-              labelText: '',
-              controller: controller.searchQueryController,
-              hintText: 'Buscar por nombre...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: Obx(
-                () => controller.searchQuery.value.isEmpty
-                    ? const SizedBox.shrink()
-                    : IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () =>
-                            controller.searchQueryController.clear(),
-                      ),
-              ),
+      IconButton(
+        onPressed: () => controller.fetchServicios(),
+        icon: const Icon(Icons.refresh),
+      ),
+    ],
+    headerContent: _buildSearchBar(),
+    filterBuilder: Obx(
+      () => ActiveFiltersDisplay(
+        filters: [
+          if (controller.selectedTipoCobro.value != 'Todos')
+            ActiveFilter(
+              label:
+                  'Tipo: ${controller.selectedTipoCobro.value.replaceAll('_', ' ')}',
+              onRemove: () => controller.changeTipoCobroFilter('Todos'),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            tooltip: 'Filtros',
-            onPressed: _showFilterModal,
-          ),
         ],
       ),
-    );
+    ),
+    itemBuilder: (servicio) => _ServiceCard(servicio: servicio),
+  );
+
+  Widget _buildSearchBar() => Padding(
+    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+    child: Row(
+      children: [
+        Expanded(
+          child: CustomTextFormField(
+            labelText: '',
+            controller: controller.searchQueryController,
+            hintText: 'Buscar por nombre...',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: Obx(
+              () => controller.searchQuery.value.isEmpty
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () => controller.searchQueryController.clear(),
+                    ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(Icons.filter_list),
+          tooltip: 'Filtros',
+          onPressed: _showFilterModal,
+        ),
+      ],
+    ),
+  );
 
   void _showFilterModal() {
     FilterBottomSheet.show(
@@ -90,10 +95,14 @@ class ServiciosListScreen extends GetView<ServicioController> {
           () => CustomDropdownFormField(
             labelText: 'Tipo de Cobro',
             value: controller.selectedTipoCobro.value,
-            items: ['Todos', 'fijo', 'por_persona', 'por_litro'].map((tipo) => DropdownMenuItem(
-                value: tipo,
-                child: Text(tipo.replaceAll('_', ' ').capitalizeFirst!),
-              )).toList(),
+            items: ['Todos', 'fijo', 'por_persona', 'por_litro']
+                .map(
+                  (tipo) => DropdownMenuItem(
+                    value: tipo,
+                    child: Text(tipo.replaceAll('_', ' ').capitalizeFirst!),
+                  ),
+                )
+                .toList(),
             onChanged: (newValue) {
               controller.selectedTipoCobro.value = newValue ?? 'Todos';
             },
@@ -111,7 +120,6 @@ class ServiciosListScreen extends GetView<ServicioController> {
 }
 
 class _ServiceCard extends StatelessWidget {
-
   const _ServiceCard({required this.servicio});
   final Servicio servicio;
 
